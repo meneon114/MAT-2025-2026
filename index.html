@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Exam App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 pb-24">
+
+    <!-- Sticky Header -->
+    <div id="header" class="sticky top-0 z-50 bg-white border-b shadow-sm px-4 py-3 flex justify-between items-center transition-all">
+        <div class="flex items-center gap-2">
+            <div id="answered-count" class="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm">0</div>
+            <div class="text-xs md:text-sm text-gray-500 font-medium hidden md:block" id="total-count-label"></div>
+        </div>
+        
+        <div id="timer-badge" class="flex items-center gap-2 px-4 py-1.5 rounded-full font-mono font-bold border bg-gray-50 text-gray-700 border-gray-200">
+            <!-- Clock Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span id="timer-display">60:00</span>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+        
+        <!-- Results View (Hidden by default) -->
+        <div id="results-view" class="hidden bg-white rounded-xl shadow-lg overflow-hidden border border-blue-100 mb-8 fade-in">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white text-center">
+                <h1 class="text-3xl font-bold mb-2">Exam Completed</h1>
+                <p class="opacity-90">Here is your detailed performance report</p>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-center">
+                        <p class="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Total Score</p>
+                        <p id="score-total" class="text-4xl font-black text-blue-600">0.00</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-xl border border-green-100 text-center">
+                        <p class="text-xs text-green-600 font-bold uppercase tracking-wider mb-1">Correct</p>
+                        <p id="score-correct" class="text-3xl font-bold text-green-600">0</p>
+                        <p class="text-xs text-green-700 mt-1">+1.0 each</p>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded-xl border border-red-100 text-center">
+                        <p class="text-xs text-red-600 font-bold uppercase tracking-wider mb-1">Wrong</p>
+                        <p id="score-wrong" class="text-3xl font-bold text-red-600">0</p>
+                        <p class="text-xs text-red-700 mt-1">-0.25 each</p>
+                    </div>
+                    <div class="bg-orange-50 p-4 rounded-xl border border-orange-100 text-center">
+                        <p class="text-xs text-orange-600 font-bold uppercase tracking-wider mb-1">Skipped</p>
+                        <p id="score-skipped" class="text-3xl font-bold text-orange-600">0</p>
+                        <p class="text-xs text-orange-700 mt-1">No Penalty</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-center">
+                    <button onclick="window.location.reload()" class="flex items-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors shadow-lg font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"></path><path d="M3 3v9h9"></path></svg>
+                        Take Exam Again
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question List Container -->
+        <div id="questions-container" class="space-y-4">
+            <!-- Questions injected here by JS -->
+        </div>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div id="action-bar" class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-40 transition-transform">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+             <div class="text-sm text-gray-500 hidden md:block">
+               Wrong answers deduct <span class="font-bold text-red-500">0.25 marks</span>
+             </div>
+             <button onclick="showModal()" class="w-full md:w-auto ml-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-lg shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Submit Exam
+            </button>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-[60] p-4 fade-in">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-100">
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Ready to Submit?</h3>
+            <div class="space-y-4 mb-6">
+                <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                    <span class="text-gray-600">Answered</span>
+                    <span id="modal-answered" class="font-bold text-blue-600 text-lg">0</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                    <span class="text-gray-600">Skipped</span>
+                    <span id="modal-skipped" class="font-bold text-orange-600 text-lg">0</span>
+                </div>
+                <p class="text-xs text-center text-gray-400">
+                    Note: Wrong answers deduct 0.25 marks.
+                </p>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="hideModal()" class="flex-1 py-3 px-4 rounded-xl text-gray-700 font-bold bg-gray-100 hover:bg-gray-200 transition-colors">
+                    Go Back
+                </button>
+                <button onclick="finishExam()" class="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-colors">
+                    Submit Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        // Format: [id, "Question Text", ["Op1", "Op2", "Op3", "Op4"], correctIndex, "Subject"]
+        const RAW_QUESTIONS = [
+            [1, "০১. ভাইরাস জনিত হেপাটাইটিস যে অঙ্গকে আক্রান্ত করে তার নাম-", ["(a) যকৃত", "(b) মস্তিষ্ক", "(c) হৃদপিণ্ড", "(d) বৃক্ক"], 0, "Biology"],
+            [2, "০২. গ্লাইকোলাইসিস ও ক্রেবস চক্রকে সংযোগ করে-", ["(a) সাইট্রিক এসিড", "(b) সাকসিনিক এসিড", "(c) এসিটাইল কো-এ", "(d) ম্যালিক এসিড"], 2, "Biology"],
+            [3, "০৩. একই সময়ে বহু সমস্যা দেখা দিলে তা সমাধানের কৌশল হলো-", ["(a) অগ্রাহ্য করা", "(b) অগ্রাধিকার নির্ধারণ", "(c) কঠিনটি দিয়ে শুরু করা", "(d) সহজটি দিয়ে শুরু করা"], 1, "General"],
+            [4, "০৪. একটি ক্রেন দ্বারা ২২০ কেজি ভরের একটি বোঝা 0.1 ms⁻¹ ধ্রুববেগে উঠানো হলে, তার প্রয়োগকৃত ক্ষমতা হলো- (g= 9.8 ms⁻²)", ["(a) 200.8 W", "(b) 215.6 W", "(c) 245 W", "(d) 196 W"], 1, "Physics"],
+            [5, "০৫. যে সকল পরমাণুর ভর সংখ্যা একই কিন্তু পারমাণবিক সংখ্যা ভিন্ন, তাদেরকে বলে-", ["(a) আইসোটোপ", "(b) আইসোটোন", "(c) আইসোমার", "(d) আইসোবার"], 3, "Physics"],
+            [6, "০৬. তাপ গতিবিদ্যার শূন্যতম সূত্রের উপর ভিত্তি করে তৈরি হয়-", ["(a) ক্যালরিমিটার", "(b) রেফ্রিজারেটর", "(c) কার্নো ইঞ্জিন", "(d) থার্মোমিটার"], 3, "Physics"],
+            [7, "০৭. মানব দেহে ক্যান্সার সৃষ্টিকারী অন্যতম DNA ভাইরাস হলো-", ["(a) সিমিয়ান ভাইরাস", "(b) ফ্লাভিভাইরাস", "(c) এডেনোভাইরাস", "(d) র‍্যাবডোভাইরাস"], 0, "Biology"],
+            [8, "০৮. দাঁতের যে অংশে রক্তনালী থাকে তার নাম-", ["(a) পাল্প", "(b) এনামেল", "(c) সিমেন্টাম", "(d) ডেনটিন"], 0, "Biology"],
+            [9, "০৯. বৃহদন্ত্রের ব্যাকটেরিয়া দ্বারা প্রস্তুতকৃত ভিটামিন হলো-", ["(a) ভিটামিন-D", "(b) ভিটামিন-K", "(c) ভিটামিন-A", "(d) ভিটামিন-E"], 1, "Biology"],
+            [10, "১০. কম্পোজিট কণিকার উদাহরণ হলো-", ["(a) quark", "(b) deuteron", "(c) lepton", "(d) electron"], 1, "Physics"],
+            [11, "১১. ১০০০ মি.লি. 5% NaOH দ্রবণে বিদ্যমান NaOH এর পরিমাণ হলো-", ["(a) 50 mg", "(b) 5 gm", "(c) 5 mg", "(d) 50 gm"], 0, "Chemistry"],
+            [12, "১২. বিশ্বের ক্ষুদ্রতম আবৃতবীজী উদ্ভিদ এর নাম-", ["(a) Pistia", "(b) Azolla", "(c) Eucalyptus", "(d) Wolffia"], 3, "Biology"],
+            [13, "১৩. একটি 100 W বাল্ক দিনে ৫ ঘন্টা করে ৩০ দিন জ্বালানো হলে, ব্যবহৃত বৈদ্যুতিক শক্তির পরিমাণ হয়-", ["(a) 15 kWh", "(b) 12 kWh", "(c) 20 kWh", "(d) 10 kWh"], 0, "Physics"],
+            [14, "১৪. অবস্থভেদে, জারক ও বিজারক হিসেবে কাজ করে-", ["(a) FeO", "(b) KMnO₄", "(c) FeCl₃", "(d) H₂S"], 0, "Chemistry"],
+            [15, "১৫. প্রাইমারি বায়ু দূষক হলো-", ["(a) SO₃", "(b) SO₂", "(c) HNO₃", "(d) H₂SO₄"], 1, "Chemistry"],
+            [16, "১৬. যে সাইনাসের প্রদাহের কারণে দুই চোখের মাঝ খানে ব্যথা হয় তার নাম-", ["(a) ম্যাক্সিলারি সাইনাস", "(b) এথময়েড সাইনাস", "(c) স্ফেনয়েড সাইনাস", "(d) ফ্রন্টাল সাইনাস"], 1, "Biology"],
+            [17, "১৭. ম্যালামাইন থেকে উৎপন্ন, ত্বকের জন্য ক্ষতিকারক পদার্থের নাম-", ["(a) ইউরিয়া", "(b) মেলামাইন", "(c) সায়ানো ইউরিক এসিড", "(d) নাইলন"], 2, "Chemistry"],
+            [18, "১৮. কাইমোট্রিপসিন প্রধানত যে খাদ্যকে পরিপাক করে তা হলো-", ["(a) মাখন", "(b) ডাল", "(c) রুটি", "(d) শাক"], 1, "Biology"],
+            [19, "19. A prefix containing word is-", ["(a) immoral", "(b) immediate", "(c) immense", "(d) important"], 0, "English"],
+            [20, "২০. হাইড্রার নিডোসাইটের কাজ হলো-", ["(a) শিকার ধরা", "(b) অন্তঃকোষীয় পরিপাক", "(c) ডিম্বাশয়ের পুনর্গঠন", "(d) এনজাইম ক্ষরণ"], 0, "Biology"],
+            [21, "২১. আলোর বর্ণের ভিন্নতা যে পার্থক্যের কারণে ঘটে, তা হলো-", ["(a) উৎস", "(b) বিস্তার", "(c) তরঙ্গদৈর্ঘ্য", "(d) তীব্রতা"], 2, "Physics"],
+            [22, "২২. বাংলাদেশে ইউনেস্কো স্বীকৃত বিশ্ব ঐতিহ্য স্থানসমূহের এর অন্তর্গত হলো-", ["(a) বাগেরহাট মসজিদ নগরী", "(b) ময়নামতি বৌদ্ধবিহার", "(c) বায়তুল মোকাররম মসজিদ", "(d) লালবাগ কেল্লা"], 0, "G.K."],
+            [23, "২৩. 30°C তাপমাত্রা মান কেলভিন স্কেলে হয়-", ["(a) 219.15 K", "(b) 405.15 K", "(c) 325.15 K", "(d) 303.15 K"], 3, "Physics"],
+            [24, "24. The word without a prefix is-", ["(a) irrational", "(b) irritable", "(c) irresponsible", "(d) irregular"], 1, "English"],
+            [25, "২৫. মানব ভ্রূণে হৃদপিণ্ডের ক্রমবিকাশ শুরু হয়-", ["(a) দশম সপ্তাহে", "(b) অষ্টম সপ্তাহে", "(c) চতুর্থ সপ্তাহে", "(d) পঞ্চম সপ্তাহে"], 2, "Biology"],
+            [26, "২৬. হরমোন প্রয়োগ করে বীজহীন ফল উৎপাদন করার প্রক্রিয়ার নাম-", ["(a) অ্যাপোগ্যামি", "(b) সাকার", "(c) ইমাস্কুলেশন", "(d) পার্থেনোকার্পি"], 3, "Biology"],
+            [27, "27. \"I know you.\" The complex form of the sentence is-", ["(a) \"I know who you were.\"", "(b) \"I know who you be.\"", "(c) \"I know who you are.\"", "(d) \"I know who are you.\""], 2, "English"],
+            [28, "২৮. সবচেয়ে কম ঘনত্ব সম্পন্ন গ্যাস হলো-", ["(a) জেনন", "(b) হাইড্রোজেন", "(c) ইথেন", "(d) মিথেন"], 1, "Chemistry"],
+            [29, "২৯. মারাত্মক দাহ্য পদার্থ হলো-", ["(a) BaCl₂", "(b) Lindane", "(c) LPG", "(d) NH₃ গ্যাস"], 2, "Chemistry"],
+            [30, "৩০. জীবাণুনাশক হিসেবে ব্যবহৃত অতিবেগুনি রশ্মির তরঙ্গদৈর্ঘ্য হলো-", ["(a) 230nm-265nm", "(b) 230nm-380nm", "(c) 240nm-280nm", "(d) 200nm-400nm"], 2, "Biology"],
+            [31, "৩১. বাংলাদেশে বায়ুর আর্দ্রতা সবচেয়ে বেশী থাকে-", ["(a) ময়মনসিংহে অক্টোবর মাসে", "(b) রংপুরে জুন মাসে", "(c) সিলেটে মে মাসে", "(d) চট্টগ্রামে আগস্ট মাসে"], 3, "G.K."],
+            [32, "32. I heard the story from the horse's mouth. The underlined phrase means-", ["(a) from an authentic source", "(b) from a doubtful source", "(c) from an open source", "(d) from an unreliable source"], 0, "English"],
+            [33, "৩৩. বাংলাদেশ যে প্রাণিভৌগোলিক অঞ্চলে অবস্থিত তার নাম-", ["(a) নিয়ার্কটিক অঞ্চল", "(b) নিওট্রপিক্যাল অঞ্চল", "(c) প্যালিকআর্কটিক অঞ্চল", "(d) ওরিয়েন্টাল অঞ্চল"], 3, "Biology"],
+            [34, "৩৪. পলাশী যুদ্ধ সংঘটিত হয় যে সালে-", ["(a) ১৯১৯", "(b) ১৫২৬", "(c) ১৭৫৭", "(d) ১৮৫৭"], 2, "History"],
+            [35, "35. The team is ______ eleven players. The correct phrase to fill in the gap is-", ["(a) made by", "(b) made out of", "(c) made up of", "(d) made of"], 2, "English"],
+            [36, "৩৬. বায়ুতে সর্বাধিক পরিমাণে বিরাজমান নিষ্ক্রিয় গ্যাস হলো-", ["(a) রেডন", "(b) নিয়ন", "(c) হিলিয়াম", "(d) আর্গন"], 3, "Chemistry"],
+            [37, "৩৭. তীব্র ডায়রিয়া রোগে মৃত্যুর প্রধান কারণ-", ["(a) রক্ত শূন্যতা", "(b) যকৃতের অকার্যকরতা", "(c) পরিপাকের অসুবিধা", "(d) পানি শূন্যতা"], 3, "Biology"],
+            [38, "৩৮. ধণাত্মক প্রভাবক হিসেবে ব্যবহৃত হয়-", ["(a) H₃PO₄", "(b) Na₂SO₃", "(c) MnO₂", "(d) KMnO₄"], 2, "Chemistry"],
+            [39, "৩৯. জেলিফিশ যে পর্বের প্রাণি তার নাম-", ["(a) মোলাস্কা", "(b) প্লাটিহেলমিনথিস", "(c) নিডারিয়া", "(d) আর্থ্রোপোডা"], 2, "Biology"],
+            [40, "৪০. সরল দোলকের সাহায্যে নির্ণয় করা যায়-", ["(a) মহাকর্ষীয় বিভব", "(b) মহাকর্ষীয় ধ্রুবক", "(c) মুক্তিবেগ", "(d) অভিকর্ষজ ত্বরণ"], 3, "Physics"],
+            [41, "৪১. স্টেম কোষের উৎস হলো-", ["(a) কুসুম থলি (yolk sac)", "(b) অ্যামনিওন", "(c) কোরিওন", "(d) অ্যালানটোইস"], 0, "Biology"],
+            [42, "৪২. যে সংক্রামক রোগকে টিকা পরিপূর্ণ ভাবে নির্মূল করেছে তা হলো-", ["(a) জল বসন্ত", "(b) গুটি বসন্ত", "(c) জলাতঙ্ক", "(d) হাম"], 1, "Biology"],
+            [43, "৪৩. ল্যাবরেটরিতে ব্যবহৃত H₂SO₄ এর পরিবেশের উপর প্রভাবসমূহের অন্যতম হলো-", ["(a) মাটির খনিজ উপাদান সমূহের ক্ষয়", "(b) বায়ু দূষণ", "(c) মাটির অনুজীবের ধ্বংস", "(d) উদ্ভিদের অতিজন্ম"], 0, "Chemistry"],
+            [44, "৪৪. ডায়াফ্রাম যে মাংসপেশি দ্বারা গঠিত তার ধরণ হলো-", ["(a) মসৃণ", "(b) অনৈচ্ছিক", "(c) ঐচ্ছিক", "(d) মিশ্র"], 2, "Biology"],
+            [45, "৪৫. মনোপ্রোটিক অম্লের উদাহরণ হলো-", ["(a) H₂CO₃", "(b) H₂SO₄", "(c) H₃PO₃", "(d) HClO₄"], 3, "Chemistry"],
+            [46, "৪৬. ভূমিকম্পের সৃষ্টি হয়-", ["(a) ভূ-অভ্যন্তরে তাপমাত্রার পার্থক্যের ফলে", "(b) ভূ-গোলকের ঘূর্ণন গতি বৃদ্ধির কারণে", "(c) টেকটনিক প্লেটের সীমানায়", "(d) ভূ-পৃষ্ঠের অভ্যন্তরীণ ও বহিঃস্থ কোরের সন্মিলন স্থলে"], 2, "G.K."],
+            [47, "47. \"He had to suffer for his sins.\" Keeping the same meaning, the negative form of the statement is-", ["(a) He had no alternative to suffer for his sins", "(b) He has no way but to suffer for his sins", "(c) He would not but suffer for his sins", "(d) He could not but suffer for his sins"], 3, "English"],
+            [48, "৪৮. বাংলাদেশে অধিক আখ উৎপাদনকারী জেলার নাম-", ["(a) খাগড়াছড়ি", "(b) মাদারীপুর", "(c) রাজশাহী", "(d) নরসিংদী"], 2, "G.K."],
+            [49, "49. You should never look down the poor. The corrected sentence is-", ["(a) You should never look down at the poor.", "(b) You should never look down to the poor.", "(c) You should never look down about the poor.", "(d) You should never look down upon the poor."], 3, "English"],
+            [50, "৫০. স্বাদের সাথে সম্পর্কিত করোটিক স্নায়ু হলো-", ["(a) হাইপোগ্লোসাল", "(b) ফেসিয়াল", "(c) ভেগাস", "(d) অপটিক"], 1, "Biology"],
+            [51, "৫১. ভারতের ‘চিকেন নেক’ করিডোর সন্নিহিত বাংলাদেশের অন্যতম জেলার নাম-", ["(a) পঞ্চগড়", "(b) কুড়িগ্রাম", "(c) সিলেট", "(d) ঠাকুরগাঁও"], 0, "G.K."],
+            [52, "52. A person unable to pay back debts is called-", ["(a) poor", "(b) cheat", "(c) miser", "(d) bankrupt"], 3, "English"],
+            [53, "53. The synonym of 'ideal' is-", ["(a) correct", "(b) perfect", "(c) good", "(d) appropriate"], 1, "English"],
+            [54, "৫৪. যে বিক্রিয়া দ্বারা অ্যালকাইল হ্যালাইড থেকে অ্যালকেন উৎপন্ন করা হয় তার নাম-", ["(a) গ্রিগনার্ড বিক্রিয়া", "(b) ক্লিমেনসেন বিজারণ", "(c) ডিকার্বোক্সিলেশন", "(d) উর্টজ বিক্রিয়া"], 3, "Chemistry"],
+            [55, "৫৫. পৃথিবীর ওজোন স্তরে ক্ষয় হলে তার পরিণতিতে ঘটতে পারে-", ["(a) শ্বাসনালীর ক্যান্সার", "(b) ত্বকের ক্যান্সার", "(c) অস্থির ক্ষয়", "(d) হৃদরোগ"], 1, "Biology"],
+            [56, "৫৬. যে পর্বের প্রাণিদের মধ্যে দ্বিপার্শীয় ক্লিভেজ পরিলক্ষিত হয়, তা হলো-", ["(a) কর্ডাটা", "(b) আর্থ্রোপোডা", "(c) অ্যানেলিডা", "(d) মোলাস্কা"], 0, "Biology"],
+            [57, "৫৭. ভ্রূণ থেকে মায়ের শরীরে পরিবাহিত পদার্থের অন্তর্গত হলো-", ["(a) গ্লুকোজ", "(b) অক্সিজেন", "(c) কার্বন-ডাই-অক্সাইড", "(d) লিপিড"], 2, "Biology"],
+            [58, "৫৮. অপটিক্যাল ফাইবারের প্রধান উপাদান হলো-", ["(a) SiO₂", "(b) CuO", "(c) MgO", "(d) CaO"], 0, "Physics"],
+            [59, "৫৯. ক্যালরিফিক মান বিচারে সবচেয়ে ভালো কয়লা হলো-", ["(a) লিগনাইট", "(b) বিটুমিনাস", "(c) অ্যানথ্রাসাইট", "(d) পিট"], 2, "Chemistry"],
+            [60, "৬০. পৃথিবীর মুক্তিবেগ হলো-", ["(a) 12.1 kms⁻¹", "(b) 11.6 kms⁻¹", "(c) 11.2 kms⁻¹", "(d) 11.8 kms⁻¹"], 2, "Physics"],
+            [61, "৬১. যে ভারী ধাতুর কারণে ব্ল্যাক-ফুট ডিজিজ হয় তার প্রতীক হলো-", ["(a) As", "(b) Cr", "(c) Cd", "(d) Pb"], 0, "Biology"],
+            [62, "৬২. যে প্রক্রিয়ায় দুটি বস্তুর ঘর্ষণের ফলে তাপ উৎপন্ন হয় তা হলো-", ["(a) অপ্রত্যাবর্তী", "(b) রুদ্ধতাপীয়", "(c) প্রত্যাবর্তী", "(d) সমোষ্ণ"], 0, "Physics"],
+            [63, "৬৩. একজন মেডিকেল শিক্ষার্থী কোর্সের মাঝ পথে এসে পড়াশোনার চাপে গুরুতর ভাবে অবসাদগ্রস্ত হয়ে পড়ে। তার উচিত ছিল-", ["(a) অতিরিক্ত পরিশ্রম এড়িয়ে চলা", "(b) শিক্ষকদের সাহায্য নেওয়া", "(c) বিশ্রামের ব্যাপারে সচেতন হওয়া", "(d) ভর্তির আগে এ শিক্ষার চাপ বিষয়ে সচেতন হওয়া"], 3, "General"],
+            [64, "৬৪. মানব জিনোম প্রকল্প সমাপ্ত ঘোষণা করা হয় যে সালে-", ["(a) ২০১৫", "(b) ২০০৩", "(c) ২০০৯", "(d) ২০২০"], 1, "Biology"],
+            [65, "৬৫. এরিথ্রোপয়েটিন উৎপন্ন হয়-", ["(a) ফুসফুসে", "(b) যকৃতে", "(c) অস্থিমজ্জায়", "(d) বৃক্কে"], 3, "Biology"],
+            [66, "66. \"I could hardly make out the traffic signs through the fog.\" The underlined phrase means-", ["(a) recognize", "(b) distinguish", "(c) locate", "(d) obey"], 1, "English"],
+            [67, "৬৭. মোটরযানে ব্যবহৃত CNGতে বিদ্যমান মিথেন গ্যাসের শতকরা পরিমাণ হলো-", ["(a) ৯৫-৯৭", "(b) ৯৫-৯৯", "(c) ৯০-৯৫", "(d) ৯০-৯৮"], 1, "Chemistry"],
+            [68, "৬৮. একজন শিক্ষার্থী নিজে পরীক্ষায় অকৃতকার্য হলেও বন্ধুর সফলতায় তাকে অভিনন্দন জানালো। সে একজন-", ["(a) নিরপেক্ষ ব্যক্তি", "(b) সৌজন্যপূর্ণ ব্যক্তি", "(c) সহানুভূতিশীল ব্যক্তি", "(d) সৎ ব্যক্তি"], 1, "General"],
+            [69, "৬৯. শাপলা যে শ্রেণির জলজ উদ্ভিদ তার নাম-", ["(a) মূলাবদ্ধ ভাসমান", "(b) মূলাবদ্ধ নিমজ্জিত", "(c) মূলাবদ্ধ উদ্ভিদ", "(d) মুক্ত ভাসমান"], 0, "Biology"],
+            [70, "৭০. অগ্ন্যাশয়ের আলফা-কোষ থেকে নিঃসৃত হয়-", ["(a) গ্লুকাগন", "(b) ইনসুলিন", "(c) প্যানক্রিয়েটিক পলিপেপটাইড", "(d) লাইপেজ"], 0, "Biology"],
+            [71, "৭১. মানবদেহে সবচেয়ে কঠিন আবরণ হলো-", ["(a) পেরিকার্ডিয়াম", "(b) পেরিকন্ড্রিয়াম", "(c) দাঁতের এনামেল", "(d) পেরিওস্টিয়াম"], 2, "Biology"],
+            [72, "৭২. ‘ফ্লেমিং এর বাম-হস্ত নিয়ম’ অনুযায়ী বৃদ্ধাঙ্গুলি নির্দেশ করে-", ["(a) চৌম্বক ভ্রামক", "(b) চৌম্বক আবেশ ক্ষেত্র", "(c) বিদ্যুৎ প্রবাহ", "(d) পরিবাহীর বিক্ষেপ"], 3, "Physics"],
+            [73, "৭৩. STP তে কোন গ্যাসের মোলার আয়তন হলো-", ["(a) 24.8 liters", "(b) 24.4 liters", "(c) 22.8 liters", "(d) 22.4 liters"], 3, "Chemistry"],
+            [74, "৭৪. চট্টগ্রামে শাহাদৎ বরণকারী ‘জুলাই শহীদ’ হলেন-", ["(a) ওয়াসিম আকরাম", "(b) আবু সাঈদ", "(c) মীর মুগ্ধ", "(d) ফারহান ফাইয়াজ"], 0, "G.K."],
+            [75, "৭৫. তড়িৎ ক্ষেত্রে কোন নির্দিষ্ট বিন্দুতে স্থাপিত একটি একক ধনাত্মক আধান যে বল অনুভব করে তা হলো-", ["(a) তড়িৎ বল", "(b) তড়িৎ ফ্লাক্স", "(c) তড়িৎ প্রাবল্য", "(d) তড়িৎ বিভব"], 2, "Physics"],
+            [76, "৭৬. FeCl₃ দ্রবণের সাহায্যে শনাক্ত করা যায়-", ["(a) ফেনল", "(b) কিটোন", "(c) অ্যালডিহাইড", "(d) এস্টার"], 0, "Chemistry"],
+            [77, "৭৭. সেমিকন্ডাক্টর রূপে ব্যবহৃত অপধাতুর প্রতীক হলো-", ["(a) Cu", "(b) Al", "(c) Ge", "(d) Zn"], 1, "Physics"],
+            [78, "৭৮. দেহঅভ্যন্তরের তুলনায় স্ক্রোটামের তাপমাত্রা হলো-", ["(a) ৩°C কম", "(b) ২°C বেশি", "(c) ৩°C বেশি", "(d) ২°C কম"], 0, "Biology"],
+            [79, "79. The supervisor took him ______ task for his negligence. The correct preposition to fill in the gap is-", ["(a) for", "(b) at", "(c) to", "(d) by"], 2, "English"],
+            [80, "80. All his dreams were shattered ______ the event. The correct preposition to fill in the gap is-", ["(a) with", "(b) after", "(c) on", "(d) by"], 3, "English"],
+            [81, "৮১. শুষ্ককারক ও নিরুদক পদার্থ উভয় হিসেবে ক্রিয়া সম্পাদন করে-", ["(a) SiO₂", "(b) Al₂O₃", "(c) KHSO₄", "(d) P₂O₅"], 3, "Chemistry"],
+            [82, "৮২. ফুসফুসীয় ও দেহজ সংবহন সম্পূর্ণ পৃথক যে প্রাণীর, তা হলো-", ["(a) পাখি", "(b) ব্যাঙ", "(c) মাছ", "(d) সাপ"], 0, "Biology"],
+            [83, "৮৩. উদ্ভিদের অতিপ্রয়োজনীয় মাইক্রো পুষ্টি উপাদানের অন্যতম হলো-", ["(a) ফসফরাস", "(b) ম্যাঙ্গানিজ", "(c) জিঙ্ক", "(d) সালফার"], 2, "Biology"],
+            [84, "৮৪. যে রাসায়নিক দ্বারা খাদদ্রব্যে ফরমালিনের উপস্থিতি নির্ণয় করা হয় তা হলো-", ["(a) ZnCl₂", "(b) PCl₅", "(c) 2,4-DNPH", "(d) NaHCO₃"], 2, "Chemistry"],
+            [85, "৮৫. ফারেনহাইট ও সেলসিয়াস স্কেলে যে তাপমাত্রা একই পাঠ পাওয়া যাবে তা হলো-", ["(a) 4°", "(b) -40°", "(c) 40°", "(d) -4°"], 1, "Physics"],
+            [86, "৮৬. গ্লাইকোলাইসিস প্রক্রিয়া নিয়ন্ত্রণকারী এনজাইমের নাম-", ["(a) aldolase", "(b) phosphoglucokinase", "(c) phosphofructokinase", "(d) enolase"], 2, "Biology"],
+            [87, "৮৭. উদ্ভিদে নিষিক্ত হওয়া ব্যতীত ডিম্বাণু থেকে ভ্রূণ সৃষ্টির পদ্ধতির নাম-", ["(a) Agamospermy", "(b) Androgenesis", "(c) Apospory", "(d) Parthenogenesis"], 3, "Biology"],
+            [88, "88. \"We mobilized funds for his treatment.\" Here mobilized means-", ["(a) spent", "(b) gave", "(c) allocated", "(d) collected"], 3, "English"],
+            [89, "৮৯. রক্ত জমাট বাঁধাতে সাহায্যকারী আয়নের নাম-", ["(a) Na⁺", "(b) K⁺", "(c) Ca⁺⁺", "(d) Fe⁺⁺"], 2, "Biology"],
+            [90, "৯০. রক্তচাপ মাপার যন্ত্রের নাম-", ["(a) স্ফিগমোম্যানোমিটার", "(b) ব্যারোমিটার", "(c) অলটিমিটার", "(d) ল্যাকটোমিটার"], 0, "Biology"],
+            [91, "91. The phrase that expresses humility is-", ["(a) Yours respectfully", "(b) Faithfully yours", "(c) Sincerely yours", "(d) Yours in appreciation"], 0, "English"],
+            [92, "৯২. বায়ু মণ্ডলের যে স্তরে প্রাকৃতিক দুর্যোগসমূহের উৎপত্তি হয় তা হলো-", ["(a) মেসোস্ফিয়ার", "(b) আয়নোস্ফিয়ার", "(c) স্ট্রাটোস্ফিয়ার", "(d) ট্রপোস্ফিয়ার"], 3, "G.K."],
+            [93, "৯৩. একবীজপত্রী মূলের গঠনে অনুপস্থিত থাকে-", ["(a) পেরিসাইকল", "(b) হাইপোডার্মিস", "(c) এন্ডোডার্মিস", "(d) কর্টেক্স"], 1, "Biology"],
+            [94, "৯৪. সম্পত্তি নিয়ে বিরোধে লিপ্ত আরমান ও সালমান দুই ভাই। ভালো বন্ধু হিসেবে কারও উচিত-", ["(a) বিরোধ নিষ্পত্তিতে মধ্যস্থতা করা", "(b) দুর্বলের পক্ষ নেওয়া", "(c) সবলের পক্ষ নেওয়া", "(d) তাদেরকে এড়িয়ে চলা"], 0, "General"],
+            [95, "৯৫. ক্রিকেটার মুশফিকুর রহিম তার শততম টেস্ট ম্যাচে একটি সেঞ্চুরী করেন। তার এই সাফল্যের পিছনে রয়েছে তার-", ["(a) ক্রিকেট বিষয়ে জ্ঞান", "(b) দলীয় সহযোগিতা", "(c) কঠোর অনুশীলন", "(d) সহজাত প্রতিভা"], 2, "General"],
+            [96, "৯৬. রাসায়নিক বিক্রিয়ায় পরমাণুতে যে পরিবর্তন ঘটে তা হলো-", ["(a) প্রোটনের সংখ্যায়", "(b) ইলেকট্রনের সংখ্যায়", "(c) নিউক্লিয়নের সংখ্যায়", "(d) নিউট্রনের সংখ্যায়"], 1, "Chemistry"],
+            [97, "97. The verb of the word 'habit' is-", ["(a) habitual", "(b) habituate", "(c) habitable", "(d) habitat"], 1, "English"],
+            [98, "৯৮. বাংলাদেশে সুপার সাইক্লোনে বাতাসের ঘণ্টায় গতিবেগ হলো-", ["(a) ২২০ কিঃ মিঃ এর অধিক", "(b) ১১৮-২১৯ কিঃ মিঃ", "(c) ৮৯-১১৭ কিঃ মিঃ", "(d) ৬২-৮৮ কিঃ মিঃ"], 0, "G.K."],
+            [99, "৯৯. স্থির কাঠামোর তুলনায় গতিশীল কাঠামোয় ঘড়ির ধীরে চলার ঘটনাকে বলে-", ["(a) দৈর্ঘ্য সংকোচন", "(b) কাল দীর্ঘায়ন", "(c) সময় সংকোচন", "(d) ভরের আপেক্ষিকতা"], 1, "Physics"],
+            [100, "১০০. পাতার গ্রাউন্ড টিস্যুর নাম-", ["(a) প্যালিসেড", "(b) এপিডার্মিস", "(c) কর্টেক্স", "(d) মেসোফিল"], 3, "Biology"]
+        ];
+
+        // --- STATE ---
+        const EXAM_QUESTIONS = RAW_QUESTIONS.map(q => ({
+            id: q[0],
+            text: q[1],
+            options: q[2],
+            correct: q[3],
+            subject: q[4]
+        }));
+
+        let answers = {};
+        let isFinished = false;
+        let timeLeft = 60 * 60; // 60 minutes
+        let timerInterval;
+
+        // --- DOM ELEMENTS ---
+        const timerDisplay = document.getElementById('timer-display');
+        const timerBadge = document.getElementById('timer-badge');
+        const answeredCount = document.getElementById('answered-count');
+        const totalCountLabel = document.getElementById('total-count-label');
+        const questionsContainer = document.getElementById('questions-container');
+        const actionBar = document.getElementById('action-bar');
+        const confirmModal = document.getElementById('confirm-modal');
+        const resultsView = document.getElementById('results-view');
+        const modalAnswered = document.getElementById('modal-answered');
+        const modalSkipped = document.getElementById('modal-skipped');
+
+        // --- INIT ---
+        function init() {
+            totalCountLabel.textContent = `/ ${EXAM_QUESTIONS.length} ANSWERED`;
+            renderQuestions();
+            startTimer();
+        }
+
+        // --- TIMER ---
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    finishExam();
+                    return;
+                }
+                timeLeft--;
+                updateTimerUI();
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            timerDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+            
+            if (timeLeft < 300) {
+                timerBadge.classList.add('bg-red-50', 'text-red-600', 'border-red-200', 'animate-pulse');
+                timerBadge.classList.remove('bg-gray-50', 'text-gray-700', 'border-gray-200');
+            }
+        }
+
+        // --- RENDERING ---
+        function renderQuestions() {
+            questionsContainer.innerHTML = EXAM_QUESTIONS.map((q, idx) => `
+                <div id="q-card-${idx}" class="p-4 md:p-6 rounded-xl border-2 shadow-sm transition-all bg-white border-gray-200">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-sm font-bold text-gray-600">
+                                ${q.id}
+                            </span>
+                            <span class="text-xs font-semibold px-2 py-1 rounded bg-gray-100 text-gray-500 uppercase tracking-wide">
+                                ${q.subject}
+                            </span>
+                        </div>
+                        <div id="status-badge-${idx}"></div>
+                    </div>
+
+                    <h3 class="text-lg font-medium text-gray-900 mb-4 leading-snug">
+                        ${q.text}
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        ${q.options.map((opt, optIdx) => `
+                            <button
+                                onclick="handleOptionSelect(${idx}, ${optIdx})"
+                                id="opt-btn-${idx}-${optIdx}"
+                                class="text-left p-3 rounded-lg border-2 transition-all flex items-start gap-3 group border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700"
+                            >
+                                <div id="marker-${idx}-${optIdx}" class="mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors border-gray-300">
+                                </div>
+                                <span id="opt-text-${idx}-${optIdx}" class="text-sm">${opt}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                    
+                    <div id="clear-btn-container-${idx}" class="hidden">
+                        <button onclick="clearSelection(${idx})" class="mt-3 text-xs text-gray-400 hover:text-red-600 font-medium flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            Clear Selection
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- INTERACTIONS ---
+        function handleOptionSelect(qIdx, optIdx) {
+            if (isFinished) return;
+            
+            answers[qIdx] = optIdx;
+            updateQuestionUI(qIdx);
+            updateHeaderCount();
+        }
+
+        function clearSelection(qIdx) {
+            if (isFinished) return;
+            delete answers[qIdx];
+            updateQuestionUI(qIdx);
+            updateHeaderCount();
+        }
+
+        function updateQuestionUI(qIdx) {
+            const selectedOpt = answers[qIdx];
+            const clearBtn = document.getElementById(`clear-btn-container-${qIdx}`);
+            
+            // Show/Hide Clear Button
+            if (selectedOpt !== undefined) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+
+            // Update Options Styles
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`opt-btn-${qIdx}-${i}`);
+                const marker = document.getElementById(`marker-${qIdx}-${i}`);
+                const text = document.getElementById(`opt-text-${qIdx}-${i}`);
+                
+                // Reset styles
+                btn.className = "text-left p-3 rounded-lg border-2 transition-all flex items-start gap-3 group border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700";
+                marker.className = "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors border-gray-300";
+                marker.innerHTML = "";
+                text.className = "text-sm";
+
+                // Apply selected styles
+                if (i === selectedOpt) {
+                    btn.classList.remove('border-gray-200', 'hover:border-blue-300', 'hover:bg-gray-50', 'text-gray-700');
+                    btn.classList.add('border-blue-500', 'bg-blue-50', 'ring-1', 'ring-blue-500');
+                    
+                    marker.classList.remove('border-gray-300');
+                    marker.classList.add('border-blue-500', 'bg-blue-500');
+                    marker.innerHTML = '<div class="w-2 h-2 bg-white rounded-full"></div>';
+                    
+                    text.classList.add('text-blue-900', 'font-medium');
+                }
+            }
+        }
+
+        function updateHeaderCount() {
+            answeredCount.textContent = Object.keys(answers).length;
+        }
+
+        // --- MODAL & FINISH ---
+        function showModal() {
+            modalAnswered.textContent = Object.keys(answers).length;
+            modalSkipped.textContent = EXAM_QUESTIONS.length - Object.keys(answers).length;
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+        }
+
+        function hideModal() {
+            confirmModal.classList.add('hidden');
+            confirmModal.classList.remove('flex');
+        }
+
+        function finishExam() {
+            isFinished = true;
+            clearInterval(timerInterval);
+            hideModal();
+            actionBar.classList.add('translate-y-full'); // Hide action bar
+            
+            // Calculate Results
+            let correct = 0, wrong = 0, skipped = 0, score = 0;
+            
+            EXAM_QUESTIONS.forEach((q, idx) => {
+                const userAns = answers[idx];
+                const card = document.getElementById(`q-card-${idx}`);
+                const statusBadge = document.getElementById(`status-badge-${idx}`);
+                const clearBtn = document.getElementById(`clear-btn-container-${idx}`);
+
+                // Hide clear button
+                if(clearBtn) clearBtn.style.display = 'none';
+
+                if (userAns === undefined) {
+                    skipped++;
+                    score -= 0;
+                    // Style Card Skipped
+                    card.className = "p-4 md:p-6 rounded-xl border-2 shadow-sm transition-all border-orange-200 bg-orange-50/30";
+                    statusBadge.innerHTML = `<span class="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded">Skipped (0)</span>`;
+                } else if (userAns === q.correct) {
+                    correct++;
+                    score += 1;
+                    // Style Card Correct
+                    card.className = "p-4 md:p-6 rounded-xl border-2 shadow-sm transition-all border-green-200 bg-green-50/30";
+                    statusBadge.innerHTML = `<span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Correct (+1)</span>`;
+                } else {
+                    wrong++;
+                    score -= 0.25;
+                    // Style Card Wrong
+                    card.className = "p-4 md:p-6 rounded-xl border-2 shadow-sm transition-all border-red-200 bg-red-50/30";
+                    statusBadge.innerHTML = `<span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> Wrong (-0.25)</span>`;
+                }
+
+                // Update Options visual state for finished exam
+                for (let i = 0; i < 4; i++) {
+                    const btn = document.getElementById(`opt-btn-${idx}-${i}`);
+                    const marker = document.getElementById(`marker-${idx}-${i}`);
+                    const text = document.getElementById(`opt-text-${idx}-${i}`);
+                    
+                    // Disable clicks (handled by isFinished check in handleOptionSelect)
+                    btn.classList.add('cursor-default');
+
+                    if (i === q.correct) {
+                        // Highlight Correct Answer
+                        btn.className = "text-left p-3 rounded-lg border-2 transition-all flex items-start gap-3 group border-green-500 bg-green-50 ring-1 ring-green-500";
+                        marker.className = "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors border-green-500 bg-green-500";
+                        marker.innerHTML = '<div class="w-2 h-2 bg-white rounded-full"></div>';
+                        text.className = "text-sm text-green-900 font-bold";
+                    } else if (i === userAns && i !== q.correct) {
+                        // Highlight Wrong Selection
+                        btn.className = "text-left p-3 rounded-lg border-2 transition-all flex items-start gap-3 group border-red-300 bg-red-50";
+                        marker.className = "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors border-red-400 bg-red-400";
+                        marker.innerHTML = '<div class="w-2 h-2 bg-white rounded-full"></div>';
+                        text.className = "text-sm text-red-900 line-through decoration-red-400";
+                    } else {
+                        // Dim others
+                        btn.className = "text-left p-3 rounded-lg border-2 transition-all flex items-start gap-3 group border-gray-100 opacity-60";
+                        marker.className = "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors border-gray-300";
+                        marker.innerHTML = "";
+                        text.className = "text-sm text-gray-700";
+                    }
+                }
+            });
+
+            // Show Results View
+            document.getElementById('score-total').textContent = score.toFixed(2);
+            document.getElementById('score-total').classList.add(score < 0 ? 'text-red-600' : 'text-blue-600');
+            document.getElementById('score-correct').textContent = correct;
+            document.getElementById('score-wrong').textContent = wrong;
+            document.getElementById('score-skipped').textContent = skipped;
+            
+            resultsView.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Initialize App
+        init();
+
+    </script>
+</body>
+</html>
